@@ -1,6 +1,6 @@
 /*
  * grunt-packager
- * https://github.com/exqy/grunt-packager
+ * https://github.com/adamteam/grunt-packager
  *
  * Copyright (c) 2014 Alex Tseng
  * Licensed under the MIT license.
