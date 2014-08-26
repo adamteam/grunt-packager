@@ -12,15 +12,15 @@ var YAML = require('js-yaml');
 
 module.exports = function(grunt) {
 
-	var DESC_REGEXP = /\/\*\s*^---([.\s\S]*)^(?:\.\.\.|---)\s*\*\//m;
+	var DESC_REGEXP = /\/\*+\s*^---([.\s\S]*)^(?:\.\.\.|---)\s*\*+\//m;
 	var SL_STRIP_EXP = ['\\/[\\/*]\\s*<', '>(.*?)<\\/', '>(?:\\s*\\*\\/)?'];
 	var ML_STRIP_EXP = ['\\/[\\/*]\\s*<', '>([.\\s\\S]*?)<\\/', '>(?:\\s*\\*\\/)?'];
 	var WRAP_REGEXP = /\\?\{([^{}]+)\}/g;
 	var PACKAGE_DOT_STAR = /(.*)\/\*$/;
 
-	// ensures the definition has a name and a provision
+	// ensures the definition has a name or a provision
 	function validDefinition(definition) {
-		return 'name' in definition && 'provides' in definition;
+		return 'name' in definition || 'provides' in definition;
 	}
 
 	// returns primary key of a definition
@@ -122,14 +122,15 @@ module.exports = function(grunt) {
 			files.forEach(function(filepath){
 
 				var source = grunt.file.read(filepath);
-				var definition = YAML.load(source.match(DESC_REGEXP)[1] || '');
+				var matched = source.match(DESC_REGEXP);
+				var definition = YAML.load(matched && matched[1] || '');
 
 				if (!definition || !validDefinition(definition)) return grunt.log.error('invalid definition: ' + filepath);
 				definition.filepath = filepath;
 				definition.package = getProjectName(filepath, options.name);
 				definition.source = source;
 				definition.key = getPrimaryKey(definition);
-				definition.provides = toArray(definition.provides);
+				definition.provides = toArray(definition.provides || definition.name);
 				// assume requires are relative to the package, if no package provided
 				definition.requires = toArray(definition.requires).map(function(component){
 					return ~component.indexOf('/') ? component : (definition.package + '/' + component);
@@ -171,6 +172,7 @@ module.exports = function(grunt) {
 			buffer = buffer.map(function(def){
 				var source = def.source, sources = [];
 				toArray(options.wrap).forEach(function(block){
+					if (!def.requires.length) return source;
 					block = block.replace(WRAP_REGEXP, function(match, name){
 						if (match.charAt(0) === '\\') return match.slice(1);
 						return (def[name] != null) ? def[name] : '';
