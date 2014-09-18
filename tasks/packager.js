@@ -18,6 +18,11 @@ module.exports = function(grunt) {
 	var WRAP_REGEXP = /\\?\{([^{}]+)\}/g;
 	var PACKAGE_DOT_STAR = /(.*)\/\*$/;
 
+	var OPTIONAL_PARAMS_WRAP = /[\[\]]/g;
+	var OPTIONAL_PARAMS_EXP = /\[(,?\s?([\w$]*),?\s?)\]/g;
+	var SL_DESC_EXP = /\s*\/\/.*/g;
+	var ML_DESC_EXP = /\/*\*+\s+.+\s+\*+\/*/gm;
+
 	// ensures the definition has a name or a provision
 	function validDefinition(definition) {
 		return 'name' in definition || 'provides' in definition;
@@ -69,6 +74,14 @@ module.exports = function(grunt) {
 		// support `requires: SomethingInThisPackage`
 		if (key.indexOf('/') == -1) key = packageName + '/' + key;
 		return key;
+	}
+
+	// stripped all not used optional parameters
+	function stripOptionalParameters(wrap, source){
+		wrap = wrap.replace(OPTIONAL_PARAMS_EXP, function(match, name, param){
+			return ~source.replace(SL_DESC_EXP, '').replace(ML_DESC_EXP, '').indexOf(param) ? name : '';
+		});
+		return OPTIONAL_PARAMS_EXP.test(wrap) ? stripOptionalParameters(wrap, source) : wrap.replace(OPTIONAL_PARAMS_WRAP, '');
 	}
 
 	grunt.registerMultiTask('packager', 'Grunt task for Adam Packager projects.', function() {
@@ -171,13 +184,12 @@ module.exports = function(grunt) {
 			// convert the buffer into the actual source
 			buffer = buffer.map(function(def){
 				var source = def.source, sources = [];
-				toArray(options.wrap).forEach(function(block){
-					if (!def.requires.length) return source;
+				if (def.requires.length) toArray(options.wrap).forEach(function(block){
 					block = block.replace(WRAP_REGEXP, function(match, name){
 						if (match.charAt(0) === '\\') return match.slice(1);
 						return (def[name] != null) ? def[name] : '';
 					});
-					sources.push(block);
+					sources.push(stripOptionalParameters(block, source));
 					if (!~sources.indexOf(source)) sources.push(source);
 				});
 				return sources.length ? sources.join(options.separator) : source;

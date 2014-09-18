@@ -1,7 +1,7 @@
 {
   "name": "grunt-adam-packager",
   "description": "Grunt task for Adam Packager projects.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "homepage": "https://github.com/adamteam/grunt-packager",
   "author": {
     "name": "Alex Tseng",
